@@ -12,13 +12,53 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    const socket = io(); const player = document.getElementById("player"); const statusEl = document.getElementById("status");
+    const socket = io();
+    const player = document.getElementById("player");
+    const statusEl = document.getElementById("status");
+
+    const iceConfig = {
+      iceServers: [
+        { urls: "stun:stun.l.google.com:19302" } // เพิ่ม STUN server
+      ]
+    };
+
     let pc=null;
-    function initPC(){const _pc=new RTCPeerConnection();_pc.ontrack=e=>{player.srcObject=e.streams[0];player.muted=false;statusEl.textContent="ฟังประกาศอยู่";};_pc.onicecandidate=e=>{if(e.candidate)socket.emit("ice-candidate-to-broadcaster",{candidate:e.candidate});};return _pc;}
-    window.addEventListener("load",()=>{statusEl.textContent="กำลังเชื่อมต่อ...";pc=initPC();socket.emit("watcher-join");});
-    socket.on("offer",async({sdp})=>{if(!pc)pc=initPC();await pc.setRemoteDescription(new RTCSessionDescription(sdp));const ans=await pc.createAnswer();await pc.setLocalDescription(ans);socket.emit("watcher-answer",{sdp:ans});});
-    socket.on("ice-candidate",({candidate})=>{if(pc&&candidate)pc.addIceCandidate(new RTCIceCandidate(candidate));});
-    socket.on("broadcast-offline",()=>{statusEl.textContent="ยังไม่มีสัญญาณ";if(pc){pc.close();pc=null;}});
+
+    function initPC(){
+      const _pc=new RTCPeerConnection(iceConfig);
+      _pc.ontrack=e=>{
+        player.srcObject=e.streams[0];
+        player.muted=false;
+        statusEl.textContent="ฟังประกาศอยู่...";
+      };
+      _pc.onicecandidate=e=>{
+        if(e.candidate) socket.emit("ice-candidate-to-broadcaster",{candidate:e.candidate});
+      };
+      return _pc;
+    }
+
+    window.addEventListener("load",()=>{
+      statusEl.textContent="กำลังเชื่อมต่อ...";
+      pc=initPC();
+      socket.emit("watcher-join");
+    });
+
+    socket.on("offer",async({sdp})=>{
+      if(!pc)pc=initPC();
+      await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+      const ans=await pc.createAnswer();
+      await pc.setLocalDescription(ans);
+      socket.emit("watcher-answer",{sdp:ans});
+    });
+
+    socket.on("ice-candidate",({candidate})=>{
+      if(pc&&candidate) pc.addIceCandidate(new RTCIceCandidate(candidate));
+    });
+
+    socket.on("broadcast-offline",()=>{
+      statusEl.textContent="ยังไม่มีสัญญาณ";
+      if(pc){pc.close();pc=null;}
+    });
   </script>
 </body>
 </html>

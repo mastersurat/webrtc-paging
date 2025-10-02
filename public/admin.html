@@ -21,35 +21,67 @@
     const pcMap = new Map();
     let localStream = null, micTrack = null;
 
+    const iceConfig = {
+      iceServers: [
+        { urls: "stun:stun.l.google.com:19302" } // เพิ่ม STUN server
+      ]
+    };
+
     loginBtn.onclick = async () => {
       socket.emit("register-broadcaster", key.value.trim(), async res => {
         if (res.ok) {
           loginStatus.textContent = "ล็อกอินสำเร็จ กำลังเปิดไมค์...";
           try {
-            localStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true }, video: false });
+            localStream = await navigator.mediaDevices.getUserMedia({
+              audio: { echoCancellation: true, noiseSuppression: true },
+              video: false
+            });
             micTrack = localStream.getAudioTracks()[0];
-            monitor.srcObject = localStream; monitor.muted = true;
-            muteBtn.disabled = false; note.textContent = "ไมค์ทำงานแล้ว";
+            monitor.srcObject = localStream; 
+            monitor.muted = true;
+            muteBtn.disabled = false; 
+            note.textContent = "ไมค์ทำงานแล้ว";
           } catch (err) { note.textContent = "เปิดไมค์ไม่ได้: " + err.message; }
         } else loginStatus.textContent = "รหัสผิด";
       });
     };
 
-    muteBtn.onclick = () => { if(micTrack){ micTrack.enabled = !micTrack.enabled; muteBtn.textContent = micTrack.enabled ? "ปิดไมค์" : "เปิดไมค์"; } };
+    muteBtn.onclick = () => {
+      if(micTrack){
+        micTrack.enabled = !micTrack.enabled;
+        muteBtn.textContent = micTrack.enabled ? "ปิดไมค์" : "เปิดไมค์";
+      }
+    };
 
     socket.on("watcher-join", async wid => {
       if (!micTrack) return;
-      const pc = new RTCPeerConnection();
-      pc.onicecandidate = e => { if(e.candidate) socket.emit("ice-candidate-to-watcher",{watcherId:wid,candidate:e.candidate}); };
+      const pc = new RTCPeerConnection(iceConfig);
+      pc.onicecandidate = e => {
+        if(e.candidate) socket.emit("ice-candidate-to-watcher",{watcherId:wid,candidate:e.candidate});
+      };
       pc.addTrack(micTrack, localStream);
       pcMap.set(wid, pc);
-      const offer = await pc.createOffer(); await pc.setLocalDescription(offer);
+      const offer = await pc.createOffer(); 
+      await pc.setLocalDescription(offer);
       socket.emit("offer-to-watcher", { watcherId: wid, sdp: offer });
     });
 
-    socket.on("watcher-answer", async ({ watcherId, sdp }) => { const pc=pcMap.get(watcherId); if(pc) await pc.setRemoteDescription(new RTCSessionDescription(sdp)); });
-    socket.on("ice-candidate-from-watcher", ({ watcherId, candidate }) => { const pc=pcMap.get(watcherId); if(pc&&candidate) pc.addIceCandidate(new RTCIceCandidate(candidate)); });
-    socket.on("watcher-left", wid => { const pc=pcMap.get(wid); if(pc) pc.close(); pcMap.delete(wid); });
+    socket.on("watcher-answer", async ({ watcherId, sdp }) => {
+      const pc=pcMap.get(watcherId); 
+      if(pc) await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+    });
+
+    socket.on("ice-candidate-from-watcher", ({ watcherId, candidate }) => {
+      const pc=pcMap.get(watcherId); 
+      if(pc&&candidate) pc.addIceCandidate(new RTCIceCandidate(candidate));
+    });
+
+    socket.on("watcher-left", wid => {
+      const pc=pcMap.get(wid); 
+      if(pc) pc.close(); 
+      pcMap.delete(wid);
+    });
+
     socket.on("watcher-count", n => count.textContent=n);
   </script>
 </body>
