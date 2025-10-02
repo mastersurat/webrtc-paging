@@ -11,22 +11,21 @@
   <p id="status">กำลังรอสัญญาณ...</p>
 
   <script src="/socket.io/socket.io.js"></script>
+  <script src="/config.js"></script>
   <script>
     const socket = io();
     const player = document.getElementById("player");
     const statusEl = document.getElementById("status");
 
-    const iceConfig = {
-      iceServers: [
-        { urls: "stun:stun.l.google.com:19302" } // เพิ่ม STUN server
-      ]
-    };
+    const iceConfig = window.ICE_CONFIG || { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+    console.log("ICE(user):", iceConfig);
 
     let pc=null;
 
     function initPC(){
       const _pc=new RTCPeerConnection(iceConfig);
       _pc.ontrack=e=>{
+        console.log("ได้รับ audio track");
         player.srcObject=e.streams[0];
         player.muted=false;
         statusEl.textContent="ฟังประกาศอยู่...";
@@ -34,6 +33,7 @@
       _pc.onicecandidate=e=>{
         if(e.candidate) socket.emit("ice-candidate-to-broadcaster",{candidate:e.candidate});
       };
+      _pc.onconnectionstatechange=()=>console.log("PC(user) state:", _pc.connectionState);
       return _pc;
     }
 
@@ -49,6 +49,7 @@
       const ans=await pc.createAnswer();
       await pc.setLocalDescription(ans);
       socket.emit("watcher-answer",{sdp:ans});
+      console.log("ส่ง answer กลับให้ admin แล้ว");
     });
 
     socket.on("ice-candidate",({candidate})=>{

@@ -16,16 +16,14 @@
   <p id="note"></p>
 
   <script src="/socket.io/socket.io.js"></script>
+  <script src="/config.js"></script>
   <script>
     const socket = io();
     const pcMap = new Map();
     let localStream = null, micTrack = null;
 
-    const iceConfig = {
-      iceServers: [
-        { urls: "stun:stun.l.google.com:19302" } // เพิ่ม STUN server
-      ]
-    };
+    const iceConfig = window.ICE_CONFIG || { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+    console.log("ICE(admin):", iceConfig);
 
     loginBtn.onclick = async () => {
       socket.emit("register-broadcaster", key.value.trim(), async res => {
@@ -41,7 +39,10 @@
             monitor.muted = true;
             muteBtn.disabled = false; 
             note.textContent = "ไมค์ทำงานแล้ว";
-          } catch (err) { note.textContent = "เปิดไมค์ไม่ได้: " + err.message; }
+          } catch (err) { 
+            console.error(err);
+            note.textContent = "เปิดไมค์ไม่ได้: " + err.message; 
+          }
         } else loginStatus.textContent = "รหัสผิด";
       });
     };
@@ -55,11 +56,14 @@
 
     socket.on("watcher-join", async wid => {
       if (!micTrack) return;
+      console.log("watcher-join:", wid);
       const pc = new RTCPeerConnection(iceConfig);
       pc.onicecandidate = e => {
         if(e.candidate) socket.emit("ice-candidate-to-watcher",{watcherId:wid,candidate:e.candidate});
       };
+      pc.onconnectionstatechange = () => console.log("PC(admin)->", wid, pc.connectionState);
       pc.addTrack(micTrack, localStream);
+      console.log("ส่ง mic track ไปยัง watcher:", wid);
       pcMap.set(wid, pc);
       const offer = await pc.createOffer(); 
       await pc.setLocalDescription(offer);
@@ -68,7 +72,10 @@
 
     socket.on("watcher-answer", async ({ watcherId, sdp }) => {
       const pc=pcMap.get(watcherId); 
-      if(pc) await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+      if(pc) {
+        await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+        console.log("ได้ answer จาก watcher:", watcherId);
+      }
     });
 
     socket.on("ice-candidate-from-watcher", ({ watcherId, candidate }) => {

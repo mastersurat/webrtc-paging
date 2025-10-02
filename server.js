@@ -7,12 +7,18 @@ const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer);
 
-// ADMIN_KEY ใส่ใน Environment variable ตอน deploy บน Render
+// ใช้สำหรับ admin (ถ้าอยากควบคุมสิทธิ์)
 const ADMIN_KEY = process.env.ADMIN_KEY || "changeme";
 
-app.use("/public", express.static(path.join(__dirname, "public")));
-app.get("/", (req, res) => res.redirect("/public/listen.html"));
+// เสิร์ฟไฟล์ static จากโฟลเดอร์ root
+app.use(express.static(path.join(__dirname)));
 
+// หน้าแรก → index.html (แดชบอร์ด)
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
+
+// Example WebRTC paging (optional)
 let broadcasterSocketId = null;
 const watchers = new Set();
 
@@ -70,7 +76,8 @@ io.on("connection", socket => {
   });
 });
 
+// Run server
 const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`✅ Server running on http://localhost:${PORT}`);
 });
