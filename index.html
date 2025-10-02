@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
   <meta charset="utf-8" />
-  <title>Dashboard Example</title>
+  <title>Dashboard ราคาทอง & สภาพอากาศ</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -11,128 +11,123 @@
 
   <!-- Sidebar -->
   <aside class="w-64 bg-white shadow-md hidden md:block">
-    <div class="p-4 text-xl font-bold border-b">📊 My Dashboard</div>
+    <div class="p-4 text-xl font-bold border-b">📊 Dashboard</div>
     <nav class="p-4">
       <ul class="space-y-2">
         <li><a href="#" class="block px-2 py-2 rounded hover:bg-gray-100">Overview</a></li>
-        <li><a href="#" class="block px-2 py-2 rounded hover:bg-gray-100">Analytics</a></li>
-        <li><a href="#" class="block px-2 py-2 rounded hover:bg-gray-100">Reports</a></li>
-        <li><a href="#" class="block px-2 py-2 rounded hover:bg-gray-100">Settings</a></li>
+        <li><a href="#" class="block px-2 py-2 rounded hover:bg-gray-100">ทอง & อากาศ</a></li>
       </ul>
     </nav>
   </aside>
 
   <!-- Main Content -->
   <div class="flex-1 flex flex-col">
-    
     <!-- Navbar -->
     <header class="bg-white shadow-md p-4 flex justify-between items-center">
       <button id="menuBtn" class="md:hidden text-gray-600">☰</button>
-      <h1 class="text-2xl font-bold">Dashboard</h1>
+      <h1 class="text-2xl font-bold">ทองคำ & สภาพอากาศ</h1>
       <div class="flex items-center space-x-4">
-        <span class="text-gray-600">Hello, Admin</span>
-        <img class="w-8 h-8 rounded-full" src="https://i.pravatar.cc/40" alt="avatar" />
+        <span class="text-gray-600">Admin</span>
       </div>
     </header>
 
-    <!-- Content -->
     <main class="p-6 overflow-y-auto flex-1">
-      
       <!-- Cards -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <div class="bg-white shadow rounded-lg p-4">
-          <h2 class="text-gray-600">Bitcoin (USD)</h2>
-          <p id="btcPrice" class="text-2xl font-bold text-blue-600">-</p>
+          <h2 class="text-gray-600">ราคาทอง (USD / oz)</h2>
+          <p id="goldPrice" class="text-2xl font-bold text-yellow-600">-</p>
         </div>
         <div class="bg-white shadow rounded-lg p-4">
-          <h2 class="text-gray-600">Ethereum (USD)</h2>
-          <p id="ethPrice" class="text-2xl font-bold text-green-600">-</p>
+          <h2 class="text-gray-600">อุณหภูมิ</h2>
+          <p id="temp" class="text-2xl font-bold text-red-600">- °C</p>
         </div>
         <div class="bg-white shadow rounded-lg p-4">
-          <h2 class="text-gray-600">Dogecoin (USD)</h2>
-          <p id="dogePrice" class="text-2xl font-bold text-yellow-600">-</p>
+          <h2 class="text-gray-600">ลม / ความชื้น</h2>
+          <p id="windHum" class="text-xl font-medium text-gray-700">-</p>
         </div>
       </div>
 
-      <!-- Charts -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="bg-white shadow rounded-lg p-4">
-          <h2 class="mb-2 text-gray-700">BTC ราคา 7 วัน</h2>
-          <canvas id="btcChart"></canvas>
-        </div>
-        <div class="bg-white shadow rounded-lg p-4">
-          <h2 class="mb-2 text-gray-700">การกระจายเหรียญ (สุ่ม)</h2>
-          <canvas id="pieChart"></canvas>
-        </div>
+      <!-- กราฟราคาทองย้อนหลัง (mock) -->
+      <div class="bg-white shadow rounded-lg p-4 mb-6">
+        <h2 class="mb-2 text-gray-700">ราคาทองย้อนหลัง 7 วัน</h2>
+        <canvas id="goldChart"></canvas>
       </div>
-
     </main>
   </div>
 
-  <!-- Sidebar Mobile -->
+  <!-- Sidebar mobile -->
   <div id="mobileMenu" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
     <div class="w-64 bg-white h-full shadow-md p-4">
       <button id="closeMenu" class="text-gray-600 mb-4">✕</button>
       <nav>
         <ul class="space-y-2">
           <li><a href="#" class="block px-2 py-2 rounded hover:bg-gray-100">Overview</a></li>
-          <li><a href="#" class="block px-2 py-2 rounded hover:bg-gray-100">Analytics</a></li>
-          <li><a href="#" class="block px-2 py-2 rounded hover:bg-gray-100">Reports</a></li>
-          <li><a href="#" class="block px-2 py-2 rounded hover:bg-gray-100">Settings</a></li>
+          <li><a href="#" class="block px-2 py-2 rounded hover:bg-gray-100">ทอง & อากาศ</a></li>
         </ul>
       </nav>
     </div>
   </div>
 
   <script>
-    // Toggle sidebar on mobile
     const menuBtn = document.getElementById("menuBtn");
     const mobileMenu = document.getElementById("mobileMenu");
     const closeMenu = document.getElementById("closeMenu");
     menuBtn.addEventListener("click", () => mobileMenu.classList.remove("hidden"));
     closeMenu.addEventListener("click", () => mobileMenu.classList.add("hidden"));
 
-    // Fetch Data (ใช้ API ฟรีของ CoinDesk สำหรับ BTC)
-    async function fetchData() {
+    async function fetchGoldPrice() {
       try {
-        const res = await fetch("https://api.coindesk.com/v1/bpi/currentprice.json");
-        const data = await res.json();
-        document.getElementById("btcPrice").textContent = "$" + data.bpi.USD.rate;
+        // ตัวอย่างเรียก Metals-API
+        const apiKey = "YOUR_METALS_API_KEY"; // ใส่ API Key ของคุณ
+        const res = await fetch(`https://metals-api.com/api/latest?access_key=${apiKey}&base=USD&symbols=XAU`);
+        const j = await res.json();
+        const price = j.rates.XAU;
+        document.getElementById("goldPrice").textContent = price.toFixed(2) + " USD/oz";
+        return price;
       } catch (err) {
-        console.error("BTC fetch error", err);
+        console.error("gold error", err);
+        document.getElementById("goldPrice").textContent = "Error";
       }
-      document.getElementById("ethPrice").textContent = "$" + (1500 + Math.random()*500).toFixed(2);
-      document.getElementById("dogePrice").textContent = "$" + (0.05 + Math.random()*0.02).toFixed(4);
     }
-    fetchData();
-    setInterval(fetchData, 10000);
 
-    // Chart.js Example
-    const btcChart = new Chart(document.getElementById("btcChart"), {
+    async function fetchWeather(lat, lon) {
+      try {
+        // ใช้ Open-Meteo ฟรีไม่ต้อง API key
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`;
+        const res = await fetch(url);
+        const j = await res.json();
+        const w = j.current_weather;
+        document.getElementById("temp").textContent = w.temperature + " °C";
+        document.getElementById("windHum").textContent = `Wind ${w.windspeed} m/s, Humidity N/A`;
+      } catch (err) {
+        console.error("weather error", err);
+        document.getElementById("temp").textContent = "Error";
+      }
+    }
+
+    // กราฟ ราคาทองย้อนหลัง (mock data)
+    const ctx = document.getElementById("goldChart").getContext("2d");
+    const goldChart = new Chart(ctx, {
       type: "line",
       data: {
-        labels: ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
+        labels: ["6d ago","5d ago","4d ago","3d ago","2d ago","Yesterday","Today"],
         datasets: [{
-          label: "BTC (USD)",
-          data: [42000,43000,41000,44000,45000,46000,47000],
-          borderColor: "#3b82f6",
-          backgroundColor: "rgba(59,130,246,0.2)",
-          fill: true,
+          label: "Gold (USD/oz)",
+          data: [1800, 1820, 1810, 1830, 1840, 1850, 1855],
+          borderColor: "#D4AF37",
+          fill: false,
           tension: 0.3
         }]
       }
     });
 
-    const pieChart = new Chart(document.getElementById("pieChart"), {
-      type: "doughnut",
-      data: {
-        labels: ["BTC","ETH","DOGE","อื่นๆ"],
-        datasets: [{
-          data: [60,25,10,5],
-          backgroundColor: ["#3b82f6","#10b981","#facc15","#9ca3af"]
-        }]
-      }
-    });
+    // เรียกข้อมูล
+    (async () => {
+      await fetchGoldPrice();
+      // ใช้ตัวอย่าง lat/lon ของ กทม.
+      fetchWeather(13.736717, 100.523186);
+    })();
   </script>
 </body>
 </html>
